@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tracker de Parciales y TPs</title>
+<style>
+  body{font-family:sans-serif;background:#f6f7f9;margin:0}
+  header{background:#fff;padding:10px 20px;border-bottom:1px solid #ddd;position:sticky;top:0}
+  h1{margin:0;font-size:20px}
+  .container{max-width:900px;margin:20px auto;padding:0 10px}
+  .card{background:#fff;padding:15px;margin-bottom:20px;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.05)}
+  .label{font-weight:bold;font-size:14px;margin-top:8px}
+  .input,.select,.btn{width:100%;padding:8px;margin-top:4px;border:1px solid #ccc;border-radius:6px}
+  .btn{cursor:pointer;background:#111827;color:#fff}
+  .chip{display:inline-block;padding:6px 10px;margin:4px;border:1px solid #ccc;border-radius:20px;cursor:pointer}
+  .chip.active{background:#111827;color:#fff}
+  .item{border:1px solid #ddd;border-radius:8px;padding:10px;margin-bottom:10px}
+  .aprobado{color:green;font-weight:bold}
+  .desaprobado{color:red;font-weight:bold}
+</style>
+</head>
+<body>
+<header>
+  <h1>Tracker de Parciales y TPs</h1>
+</header>
+<div class="container">
+  <div class="card">
+    <div class="label">Nueva materia</div>
+    <input id="newMateriaInput" class="input" placeholder="Ej: Matemática">
+    <button id="btnCrearMateria" class="btn">+ Crear materia</button>
+    <div id="chipsMaterias"></div>
+  </div>
+  <div class="card">
+    <div class="label">Agregar Parcial/TP</div>
+    <select id="itemMateria" class="select"></select>
+    <input id="itemTitulo" class="input" placeholder="Título">
+    <input id="itemFecha" type="date" class="input">
+    <select id="itemTipo" class="select"><option>Parcial</option><option>TP</option></select>
+    <select id="itemCalif" class="select">
+      <option value="">—</option>
+      <option value="aprobado">Aprobado</option>
+      <option value="desaprobado">Desaprobado</option>
+    </select>
+    <select id="itemEstado" class="select">
+      <option value="pendiente">Pendiente</option>
+      <option value="entregado">Entregado</option>
+      <option value="corregido">Corregido</option>
+    </select>
+    <button id="btnAgregar" class="btn">Agregar</button>
+  </div>
+  <div class="card">
+    <h2>Listado</h2>
+    <div id="lista"></div>
+  </div>
+</div>
+<script>
+const state={materias:[],items:[]};
+const $=s=>document.querySelector(s);
+function uid(){return Math.random().toString(36).substr(2,9)}
+function renderMaterias(){
+  const chips=$("#chipsMaterias");chips.innerHTML="";
+  state.materias.forEach(m=>{
+    const b=document.createElement("div");b.className="chip";b.textContent=m.nombre;
+    chips.appendChild(b);
+  });
+  const sel=$("#itemMateria");sel.innerHTML="";
+  state.materias.forEach(m=>{
+    const o=document.createElement("option");o.value=m.id;o.textContent=m.nombre;sel.appendChild(o);
+  });
+}
+function renderLista(){
+  const list=$("#lista");list.innerHTML="";
+  state.items.forEach(it=>{
+    const d=document.createElement("div");d.className="item";
+    d.innerHTML=`<strong>${it.titulo}</strong> (${it.tipo}) - ${it.fecha}<br>
+      <span class="${it.calif}">${it.calif||"—"}</span> - Estado: ${it.estado}`;
+    list.appendChild(d);
+  });
+}
+$("#btnCrearMateria").onclick=()=>{
+  const n=$("#newMateriaInput").value.trim();if(!n)return;
+  state.materias.push({id:uid(),nombre:n});$("#newMateriaInput").value="";renderMaterias();
+};
+$("#btnAgregar").onclick=()=>{
+  const m=$("#itemMateria").value,t=$("#itemTitulo").value,f=$("#itemFecha").value,tp=$("#itemTipo").value,c=$("#itemCalif").value,e=$("#itemEstado").value;
+  if(!m||!t||!f)return alert("Completar materia, título y fecha");
+  state.items.push({id:uid(),materiaId:m,titulo:t,fecha:f,tipo:tp,calif:c,estado:e});
+  $("#itemTitulo").value="";renderLista();
+};
+</script>
+</body>
+</html>
