@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Recordatorio de Pastillas</title>
+  <style>
+    :root{
+      --bg:#0b1220; --card:#121a2b; --muted:#8aa0b5; --accent:#48e79a; --danger:#ff6b6b; --text:#e6eef7;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,Helvetica,Arial; background:radial-gradient(1200px 800px at 80% -10%, #1b2a4a 0%, #0b1220 70%) fixed; color:var(--text)}
+    .container{max-width:980px; margin:24px auto; padding:0 16px}
+    header{display:flex; align-items:center; gap:12px; margin-bottom:18px}
+    header h1{font-size:1.6rem; margin:0}
+    .badge{padding:2px 8px; border-radius:999px; background:#1e2a44; color:#b8c9de; font-size:.85rem}
+    .grid{display:grid; gap:16px; grid-template-columns:1.2fr .8fr}
+    @media (max-width:900px){.grid{grid-template-columns:1fr}}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02)); border:1px solid rgba(255,255,255,.08); border-radius:18px; box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    .card h2{margin:0 0 10px 0; font-size:1.1rem; letter-spacing:.2px}
+    .card .content{padding:16px}
+    .row{display:flex; gap:10px; flex-wrap:wrap}
+    label{font-size:.92rem; color:#cfe0f4}
+    input[type="text"], input[type="time"]{background:#0e1627; border:1px solid #243453; color:var(--text); padding:10px 12px; border-radius:10px; outline:0}
+    input[type="time"]{min-width:120px}
+    .btn{border:1px solid #2c3f63; background:#15203a; color:#dbe7fb; padding:10px 14px; border-radius:12px; cursor:pointer; transition:.15s; font-weight:600}
+    .btn:hover{transform:translateY(-1px); box-shadow:0 4px 16px rgba(0,0,0,.25)}
+    .btn-primary{background:linear-gradient(90deg,#31d17f,#48e79a); color:#0b1220; border:0}
+    .btn-danger{background:linear-gradient(90deg,#ff7878,#ff5c5c); color:white; border:0}
+    .btn-ghost{background:transparent; border:1px dashed #39507a; color:#c3d3ea}
+    .chip{background:#172542; border:1px solid #2b416b; color:#c8d8ef; padding:6px 10px; border-radius:999px; display:inline-flex; align-items:center; gap:6px}
+    .chip .x{cursor:pointer; opacity:.8}
+    .list{padding:0; margin:0; list-style:none}
+    .pill{display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:14px; border-top:1px solid rgba(255,255,255,.06)}
+    .pill:first-child{border-top:0}
+    .title{font-weight:700}
+    .muted{color:var(--muted); font-size:.9rem}
+    .inline{display:inline-flex; gap:8px; align-items:center}
+    .days{display:flex; gap:6px; flex-wrap:wrap}
+    .days .day{padding:7px 10px; border-radius:10px; background:#13203b; border:1px solid #26406d; color:#cfe0f4; cursor:pointer; user-select:none}
+    .days .day.active{background:#1b2d54; border-color:#2f4d85}
+    .switch{position:relative; width:44px; height:24px}
+    .switch input{opacity:0; width:0; height:0}
+    .slider{position:absolute; cursor:pointer; inset:0; background:#334a73; border-radius:999px}
+    .slider:before{content:""; position:absolute; height:18px; width:18px; left:3px; top:3px; background:white; border-radius:50%; transition:.2s}
+    input:checked + .slider{background:#3adb92}
+    input:checked + .slider:before{transform:translateX(20px)}
+    .footer{margin-top:14px; color:#9bb0c9; font-size:.9rem}
+    .pill-actions{display:flex; gap:8px}
+    .hint{font-size:.86rem; color:#9fb4cc}
+    .log{max-height:200px; overflow:auto; border-top:1px solid rgba(255,255,255,.08)}
+
+    /* Modal */
+    .modal{position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(5,8,15,.6); backdrop-filter:blur(4px); z-index:1000}
+    .modal.show{display:flex}
+    .modal .box{background:var(--card); border:1px solid rgba(255,255,255,.1); border-radius:18px; padding:18px; width:min(480px,92vw)}
+    .modal h3{margin:.2rem 0 0 0}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🕒 Recordatorio de Pastillas</h1>
+      <span class="badge" id="zone"></span>
+      <span class="badge" id="permission">Permisos: —</span>
+    </header>
+
+    <div class="grid">
+      <!-- Formulario -->
+      <section class="card">
+        <div class="content">
+          <h2>Nueva medicina</h2>
+          <div class="row">
+            <div style="flex:1 1 220px">
+              <label>Nombre</label>
+              <input id="name" type="text" placeholder="Ej: Sertralina 50mg" />
+            </div>
+            <div>
+              <label>Horario</label>
+              <div class="row">
+                <input id="time" type="time" />
+                <button class="btn" id="addTime">Agregar horario</button>
+              </div>
+              <div class="row" id="times"></div>
+            </div>
+          </div>
+
+          <div style="margin-top:12px">
+            <label>Días</label>
+            <div class="days" id="days"></div>
+          </div>
+
+          <div class="row" style="align-items:center; margin-top:12px">
+            <label class="inline">Notificación
+              <span class="hint">(pide permiso)</span>
+            </label>
+            <label class="switch">
+              <input id="notify" type="checkbox" checked />
+              <span class="slider"></span>
+            </label>
+            <label class="inline">Sonido</label>
+            <label class="switch">
+              <input id="sound" type="checkbox" checked />
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="row" style="margin-top:12px">
+            <button class="btn btn-primary" id="save">Guardar</button>
+            <button class="btn btn-ghost" id="resetForm">Limpiar</button>
+            <button class="btn" id="requestPerms">Solicitar permisos</button>
+          </div>
+
+          <div class="footer hint">Consejo: agregá varias horas para la misma medicina (mañana / tarde / noche). Todo queda guardado en tu navegador.</div>
+        </div>
+      </section>
+
+      <!-- Lista -->
+      <section class="card">
+        <div class="content">
+          <h2>Mis medicinas</h2>
+          <ul id="list" class="list"></ul>
+          <div class="footer">Si cerrás la pestaña, los recordatorios siguen funcionando mientras el navegador esté abierto y esta página activa.</div>
+        </div>
+      </section>
+
+      <!-- Registro del día -->
+      <section class="card" style="grid-column:1 / -1">
+        <div class="content">
+          <h2>Registro de hoy</h2>
+          <div id="log" class="log"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal" id="modal">
+    <div class="box">
+      <div class="muted" id="modalTime"></div>
+      <h3 id="modalTitle">Hora de tu medicina</h3>
+      <div class="muted" id="modalBody"></div>
+      <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap">
+        <button class="btn btn-primary" id="btnTaken">Tomada ✅</button>
+        <button class="btn" id="btnSnooze5">Posponer 5 min</button>
+        <button class="btn" id="btnSnooze10">Posponer 10 min</button>
+        <button class="btn btn-danger" id="btnDismiss">Descartar</button>
+      </div>
+    </div>
+  </div>
+
+  <audio id="ding"></audio>
+
+  <script>
+    // ===== Utilidades =====
+    const $ = (q)=>document.querySelector(q);
+    const $$ = (q)=>Array.from(document.querySelectorAll(q));
+    const LS_KEY = 'pill-planner-v1';
+    const LOG_KEY = 'pill-log-v1';
+
+    const DAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']; // Lun..Dom
+
+    const fmt = (d)=> d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    const todayKey = ()=> new Date().toISOString().slice(0,10);
+
+    function load(){
+      try{ return JSON.parse(localStorage.getItem(LS_KEY)) || [] }catch{ return [] }
+    }
+    function save(data){ localStorage.setItem(LS_KEY, JSON.stringify(data)); }
+
+    function loadLog(){
+      try{ return JSON.parse(localStorage.getItem(LOG_KEY)) || {} }catch{ return {} }
+    }
+    function saveLog(log){ localStorage.setItem(LOG_KEY, JSON.stringify(log)); renderLog(); }
+
+    function ensureNotificationPermissionUI(){
+      const s = Notification?.permission || 'unsupported';
+      $('#permission').textContent = 'Permisos: ' + s;
+    }
+
+    function askPermission(){
+      if (!('Notification' in window)) { alert('Tu navegador no soporta notificaciones.'); return }
+      Notification.requestPermission().then(ensureNotificationPermissionUI);
+    }
+
+    function beep(){
+      // Tono simple con WebAudio (sin archivos externos)
+      try{
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = 'sine';
+        o.frequency.value = 880; // La
+        o.connect(g); g.connect(ctx.destination);
+        g.gain.setValueAtTime(0.0001, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.4, ctx.currentTime + 0.01);
+        o.start();
+        // Pequeño arpegio
+        setTimeout(()=>{ o.frequency.setValueAtTime(660, ctx.currentTime) }, 180);
+        setTimeout(()=>{ o.frequency.setValueAtTime(990, ctx.currentTime) }, 360);
+        setTimeout(()=>{ g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.03); o.stop(ctx.currentTime + 0.05) }, 520);
+      }catch{}
+    }
+
+    function canNotify(){ return ('Notification' in window) && Notification.permission === 'granted'; }
+
+    // ===== Estado & Render =====
+    let state = load();
+    let pendingTimers = new Map(); // id -> timeoutId
+
+    function renderDays(selected){
+      const wrap = $('#days');
+      wrap.innerHTML = '';
+      DAYS.forEach((d, i)=>{
+        const el = document.createElement('div');
+        el.className = 'day' + (selected?.includes(i)?' active':'');
+        el.textContent = d;
+        el.onclick = ()=>{ el.classList.toggle('active') };
+        wrap.appendChild(el);
+      });
+    }
+
+    function getSelectedDays(){
+      return Array.from($('#days').children).map((c,i)=> c.classList.contains('active')? i : null).filter(x=>x!==null);
+    }
+
+    function addTimeChip(value){
+      if(!value) return;
+      const wrap = $('#times');
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.innerHTML = `<span>⏰ ${value}</span> <span class="x">✕</span>`;
+      chip.querySelector('.x').onclick = ()=> chip.remove();
+      wrap.appendChild(chip);
+    }
+
+    function getTimesFromChips(){
+      return Array.from($('#times').children).map(c=> c.firstChild.textContent.replace('⏰ ','').trim());
+    }
+
+    function resetForm(){
+      $('#name').value='';
+      $('#time').value='';
+      $('#notify').checked=true;
+      $('#sound').checked=true;
+      $('#times').innerHTML='';
+      renderDays([0,1,2,3,4,5,6]);
+    }
+
+    function renderList(){
+      const ul = $('#list');
+      ul.innerHTML='';
+      if(state.length===0){ ul.innerHTML = '<div class="hint">Todavía no agregaste medicinas.</div>'; return }
+      state.forEach((item, idx)=>{
+        const li = document.createElement('li');
+        li.className = 'pill';
+        const left = document.createElement('div');
+        const right = document.createElement('div');
+        right.className = 'pill-actions';
+        left.innerHTML = `<div class="title">${item.name}</div>
+          <div class="muted">${item.times.join(', ')} · Días: ${item.days.map(d=>DAYS[d]).join('')} · ${item.notify?'🔔':'🔕'} ${item.sound?'🔊':''}</div>`;
+        const del = document.createElement('button'); del.className='btn btn-danger'; del.textContent='Eliminar'; del.onclick=()=>{ removeItem(idx) };
+        const test = document.createElement('button'); test.className='btn'; test.textContent='Probar ahora'; test.onclick=()=> triggerReminder(idx, true);
+        right.append(test, del);
+        li.append(left,right);
+        ul.appendChild(li);
+      })
+    }
+
+    function renderLog(){
+      const container = $('#log');
+      const log = loadLog()[todayKey()] || [];
+      if(!log.length){ container.innerHTML = '<div class="hint" style="padding:12px">Sin tomas registradas hoy.</div>'; return }
+      container.innerHTML = log.map(e=>{
+        return `<div class="pill"><div><div class="title">${e.name}</div><div class="muted">${new Date(e.when).toLocaleString()}${e.note? ' · '+e.note:''}</div></div></div>`
+      }).join('');
+    }
+
+    function removeItem(idx){
+      const item = state[idx];
+      state.splice(idx,1); save(state); cancelSchedulesFor(item); scheduleAll(); renderList();
+    }
+
+    // ===== Scheduling =====
+    function nextOccurrenceFor(item, baseDate){
+      // Devuelve próximos Date para cada horario del item a partir de baseDate
+      const base = new Date(baseDate || Date.now());
+      const occurrences = [];
+      item.times.forEach(t=>{
+        const [hh, mm] = t.split(':').map(Number);
+        // Construir la fecha objetivo hoy
+        const target = new Date(base);
+        target.setHours(hh, mm, 0, 0);
+        const dayIndex = (d)=> (d+6)%7; // JS: 0=Dom..6=Sab → queremos 0=Lun..6=Dom
+        let candidate = new Date(target);
+        // Si ya pasó, mover al día siguiente permitido
+        if(candidate <= base) candidate.setDate(candidate.getDate()+1);
+        // Avanzar hasta un día permitido
+        while(!item.days.includes(dayIndex(candidate.getDay()))){
+          candidate.setDate(candidate.getDate()+1);
+        }
+        occurrences.push(candidate);
+        // También considerar hoy si todavía no pasó y hoy está permitido
+        const todayAllowed = item.days.includes(dayIndex(target.getDay()));
+        if (todayAllowed && target > base) occurrences.push(target);
+      });
+      return occurrences.sort((a,b)=>a-b);
+    }
+
+    function scheduleItem(idx){
+      const item = state[idx];
+      if(!item) return;
+      const nexts = nextOccurrenceFor(item);
+      if(!nexts.length) return;
+      const next = nexts[0];
+      const ms = next - Date.now();
+      const id = setTimeout(()=> triggerReminder(idx), ms);
+      pendingTimers.set(item.id, id);
+    }
+
+    function cancelSchedulesFor(item){
+      const id = pendingTimers.get(item.id);
+      if(id){ clearTimeout(id); pendingTimers.delete(item.id); }
+    }
+
+    function scheduleAll(){
+      // Cancelar todo
+      pendingTimers.forEach(t=> clearTimeout(t)); pendingTimers.clear();
+      // Programar uno por item (el próximo)
+      state.forEach((_, idx)=> scheduleItem(idx));
+    }
+
+    // ===== Recordatorio =====
+    let currentModal = null; // {idx, timeout?, name}
+
+    function triggerReminder(idx, isTest=false){
+      const item = state[idx]; if(!item) return;
+      // Mostrar notificación
+      const title = isTest ? `Prueba: ${item.name}` : `Hora de ${item.name}`;
+      const body = `${item.times.join(', ')}${isTest?' (prueba)':''}`;
+      if(item.notify && canNotify()){
+        new Notification(title, { body, silent: true });
+      }
+      if(item.sound) beep();
+      // Modal
+      $('#modalTitle').textContent = title;
+      $('#modalBody').textContent = '¿La tomaste?';
+      $('#modalTime').textContent = new Date().toLocaleString();
+      $('#modal').classList.add('show');
+      currentModal = { idx, name:item.name };
+      // Reprogramar el siguiente
+      if(!isTest){ cancelSchedulesFor(item); scheduleItem(idx); }
+    }
+
+    function addLogEntry(name, note){
+      const all = loadLog();
+      const key = todayKey();
+      all[key] = all[key] || [];
+      all[key].push({ name, when: Date.now(), note });
+      saveLog(all);
+    }
+
+    // ===== Eventos UI =====
+    $('#addTime').onclick = ()=>{ if($('#time').value) addTimeChip($('#time').value) };
+    $('#resetForm').onclick = resetForm;
+    $('#requestPerms').onclick = askPermission;
+    $('#save').onclick = ()=>{
+      const name = $('#name').value.trim();
+      const times = getTimesFromChips();
+      const days = getSelectedDays();
+      const notify = $('#notify').checked; const sound = $('#sound').checked;
+      if(!name){ alert('Poné un nombre.'); return }
+      if(times.length===0){ alert('Agregá al menos un horario.'); return }
+      if(days.length===0){ alert('Elegí al menos un día.'); return }
+      const item = { id: crypto.randomUUID(), name, times, days, notify, sound };
+      state.push(item); save(state); renderList(); scheduleItem(state.length-1); resetForm();
+    };
+
+    $('#btnTaken').onclick = ()=>{ if(!currentModal) return; addLogEntry(currentModal.name, 'Tomada'); $('#modal').classList.remove('show'); currentModal=null };
+    $('#btnSnooze5').onclick = ()=> snooze(5);
+    $('#btnSnooze10').onclick = ()=> snooze(10);
+    $('#btnDismiss').onclick = ()=>{ $('#modal').classList.remove('show'); currentModal=null };
+
+    function snooze(mins){
+      if(!currentModal) return; const { idx, name } = currentModal;
+      $('#modal').classList.remove('show');
+      const t = setTimeout(()=> triggerReminder(idx, true), mins*60*1000);
+      currentModal = null;
+      addLogEntry(name, `Pospuesto ${mins} min`);
+    }
+
+    // ===== Init =====
+    (function init(){
+      // Zona horaria
+      try{
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        $('#zone').textContent = tz || 'Zona horaria';
+      }catch{ $('#zone').textContent = 'Zona horaria' }
+
+      ensureNotificationPermissionUI();
+      renderDays([0,1,2,3,4,5,6]);
+      renderList();
+      renderLog();
+
+      // Chips rápidas cuando ponen una hora y presionan Enter
+      $('#time').addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); $('#addTime').click(); }});
+
+      // Restaurar chips si editan y vuelven (no persistimos el form)
+
+      // Programar todo
+      scheduleAll();
+
+      // Conseguir permiso de notificación al primer click en la página
+      document.addEventListener('click', ()=>{
+        if(Notification?.permission==='default'){
+          askPermission();
+        }
+      }, { once:true });
+    })();
+  </script>
+</body>
+</html>
